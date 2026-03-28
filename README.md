@@ -2,7 +2,7 @@
 
 Predictive modeling system for consumer loan default risk, built on 307,511 Home Credit applications. Combines gradient boosted trees, SHAP-based explainability, and a live Streamlit scoring interface designed around bank underwriting workflows.
 
-**Live App:** [Streamlit — Credit Risk Predictor](#) *(deploy link after Streamlit Cloud setup)*
+**Live App:** [Streamlit — Credit Risk Predictor](https://credit-risk--predictor.streamlit.app/)
 **Dataset:** [Home Credit Default Risk — Kaggle](https://www.kaggle.com/competitions/home-credit-default-risk)
 
 ---
