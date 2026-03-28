@@ -1,0 +1,47 @@
+# Data files (download separately via Kaggle API)
+data/
+*.csv
+*.zip
+*.pkl
+*.joblib
+*.h5
+
+# Models (too large for git)
+models/*.pkl
+models/*.joblib
+models/*.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Environment
+.env
+.env.local
+kaggle.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Streamlit
+.streamlit/secrets.toml
