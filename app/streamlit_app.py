@@ -20,21 +20,31 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.stApp { background-color: #F0F4F8; }
+/* Metric cards — no forced background so dark/light mode both work */
 [data-testid="stMetric"] {
-    background: white; border: 1px solid #E2E8F0;
-    border-radius: 10px; padding: 1rem 1.2rem;
+    border: 1px solid rgba(128,128,128,0.2);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.07);
 }
-.badge-high   { background:#FEE2E2; color:#991B1B; border:1px solid #F87171; padding:0.4rem 1rem; border-radius:20px; font-weight:700; display:inline-block; }
-.badge-medium { background:#FEF3C7; color:#92400E; border:1px solid #FCD34D; padding:0.4rem 1rem; border-radius:20px; font-weight:700; display:inline-block; }
-.badge-low    { background:#D1FAE5; color:#065F46; border:1px solid #34D399; padding:0.4rem 1rem; border-radius:20px; font-weight:700; display:inline-block; }
-.box-approve  { background:#D1FAE5; border:2px solid #059669; border-radius:12px; padding:1.5rem; }
-.box-review   { background:#FEF3C7; border:2px solid #D97706; border-radius:12px; padding:1.5rem; }
-.box-decline  { background:#FEE2E2; border:2px solid #DC2626; border-radius:12px; padding:1.5rem; }
+
+/* Risk badges — explicit bg+text so readable on any background */
+.badge-high   { background:#FEE2E2; color:#991B1B !important; border:1px solid #F87171; padding:0.4rem 1rem; border-radius:20px; font-weight:700; display:inline-block; }
+.badge-medium { background:#FEF3C7; color:#92400E !important; border:1px solid #FCD34D; padding:0.4rem 1rem; border-radius:20px; font-weight:700; display:inline-block; }
+.badge-low    { background:#D1FAE5; color:#065F46 !important; border:1px solid #34D399; padding:0.4rem 1rem; border-radius:20px; font-weight:700; display:inline-block; }
+
+/* Decision boxes — explicit text color so dark mode doesn't hide it */
+.box-approve  { background:#D1FAE5; border:2px solid #059669; border-radius:12px; padding:1.5rem; color:#065F46 !important; }
+.box-review   { background:#FEF3C7; border:2px solid #D97706; border-radius:12px; padding:1.5rem; color:#78350F !important; }
+.box-decline  { background:#FEE2E2; border:2px solid #DC2626; border-radius:12px; padding:1.5rem; color:#991B1B !important; }
+.box-approve *, .box-review *, .box-decline * { color: inherit !important; }
+
+/* Sidebar */
 [data-testid="stSidebar"] { background-color: #1E3A5F; }
-[data-testid="stSidebar"] label { color: #CBD5E1 !important; }
+[data-testid="stSidebar"] label,
 [data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] div,
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,
 [data-testid="stSidebar"] h3 { color: white !important; }
@@ -231,7 +241,7 @@ with tab1:
                 }
             ))
             fig_gauge.update_layout(height=240, margin=dict(t=30, b=10, l=20, r=20),
-                                    paper_bgcolor='white')
+                                    paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_gauge, use_container_width=True)
 
         # SHAP / feature contribution chart
@@ -266,7 +276,7 @@ with tab1:
         fig_bar.update_layout(
             xaxis_title='Contribution to Default Probability',
             yaxis={'categoryorder': 'total ascending'},
-            height=400, paper_bgcolor='white', plot_bgcolor='white',
+            height=400, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             margin=dict(l=10, r=80, t=20, b=40), showlegend=False
         )
         fig_bar.add_vline(x=0, line_width=1, line_color='#333')
@@ -339,7 +349,7 @@ with tab2:
             r=[0.781, 0.418, 0.712, 0.527], theta=cats, fill='toself',
             name='LightGBM', line_color='#CF0A2C', fillcolor='rgba(207,10,44,0.1)'))
         fig3.update_layout(polar=dict(radialaxis=dict(range=[0, 1])),
-                           height=360, paper_bgcolor='white', title='Performance Comparison')
+                           height=360, paper_bgcolor='rgba(0,0,0,0)', title='Performance Comparison')
         st.plotly_chart(fig3, use_container_width=True)
 
     with c2:
@@ -355,7 +365,7 @@ with tab2:
                        annotation_text='Decline (35%)', annotation_position='top right')
         fig4.update_layout(xaxis_title='Threshold (%)', yaxis_title='Score',
                            yaxis=dict(range=[0, 1]), height=360,
-                           paper_bgcolor='white', plot_bgcolor='white',
+                           paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
                            title='Precision vs Recall by Threshold')
         st.plotly_chart(fig4, use_container_width=True)
 
