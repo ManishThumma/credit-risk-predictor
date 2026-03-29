@@ -360,8 +360,8 @@ with tab2:
             r=[0.781, 0.418, 0.712, 0.527], theta=cats, fill='toself',
             name='LightGBM', line_color='#CF0A2C', fillcolor='rgba(207,10,44,0.1)'))
         fig3.update_layout(polar=dict(radialaxis=dict(range=[0, 1])),
-                           height=360, paper_bgcolor='rgba(0,0,0,0)', title='Performance Comparison')
-        st.plotly_chart(fig3, use_container_width=True)
+                           height=360, title='Performance Comparison')
+        st.plotly_chart(fig3, use_container_width=True, theme="streamlit")
 
     with c2:
         thresh = np.arange(0.05, 0.95, 0.05)
@@ -376,9 +376,8 @@ with tab2:
                        annotation_text='Decline (35%)', annotation_position='top right')
         fig4.update_layout(xaxis_title='Threshold (%)', yaxis_title='Score',
                            yaxis=dict(range=[0, 1]), height=360,
-                           paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
                            title='Precision vs Recall by Threshold')
-        st.plotly_chart(fig4, use_container_width=True)
+        st.plotly_chart(fig4, use_container_width=True, theme="streamlit")
 
     st.markdown("### Business Impact (100K annual originations, $10K avg loan, 3% charge-off rate)")
     b1, b2, b3, b4 = st.columns(4)
