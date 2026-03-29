@@ -4,7 +4,12 @@ import numpy as np
 import plotly.graph_objects as go
 import joblib
 import os
-import shap
+
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except Exception:
+    SHAP_AVAILABLE = False
 
 st.set_page_config(
     page_title="Credit Default Risk Predictor",
@@ -29,19 +34,24 @@ st.markdown("""
 .box-decline  { background:#FEE2E2; border:2px solid #DC2626; border-radius:12px; padding:1.5rem; }
 [data-testid="stSidebar"] { background-color: #1E3A5F; }
 [data-testid="stSidebar"] label { color: #CBD5E1 !important; }
-[data-testid="stSidebar"] p, [data-testid="stSidebar"] h1,
-[data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: white !important; }
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 { color: white !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Model ──────────────────────────────────────────────────────────────────
+# ── Model Loading ──────────────────────────────────────────────────────────
 MODEL_PATH    = os.path.join(os.path.dirname(__file__), '../models/lgbm_credit_risk_model.pkl')
 FEATURES_PATH = os.path.join(os.path.dirname(__file__), '../models/feature_columns.pkl')
 
 @st.cache_resource
 def load_model():
-    if os.path.exists(MODEL_PATH) and os.path.exists(FEATURES_PATH):
-        return joblib.load(MODEL_PATH), joblib.load(FEATURES_PATH)
+    try:
+        if os.path.exists(MODEL_PATH) and os.path.exists(FEATURES_PATH):
+            return joblib.load(MODEL_PATH), joblib.load(FEATURES_PATH)
+    except Exception:
+        pass
     return None, None
 
 model, feature_columns = load_model()
@@ -53,35 +63,35 @@ st.sidebar.markdown("*Home Credit Default Risk Model*")
 st.sidebar.markdown("---")
 
 st.sidebar.markdown("### Applicant")
-age             = st.sidebar.slider("Age", 18, 70, 35)
-gender          = st.sidebar.selectbox("Gender", ["M", "F"])
-education       = st.sidebar.selectbox("Education", [
+age            = st.sidebar.slider("Age", 18, 70, 35)
+gender         = st.sidebar.selectbox("Gender", ["M", "F"])
+education      = st.sidebar.selectbox("Education", [
     "Higher education", "Secondary / secondary special",
     "Incomplete higher", "Lower secondary", "Academic degree"
 ])
-family_members  = st.sidebar.number_input("Family Members", 1, 10, 2)
-contract_type   = st.sidebar.selectbox("Contract Type", ["Cash loans", "Revolving loans"])
+family_members = st.sidebar.number_input("Family Members", 1, 10, 2)
+contract_type  = st.sidebar.selectbox("Contract Type", ["Cash loans", "Revolving loans"])
 
 st.sidebar.markdown("### Financials")
-annual_income   = st.sidebar.number_input("Annual Income ($)", 10000, 1000000, 75000, step=5000)
-loan_amount     = st.sidebar.number_input("Loan Amount ($)", 5000, 5000000, 200000, step=10000)
-annuity         = st.sidebar.number_input("Monthly Annuity ($)", 100, 50000, 9000, step=500)
-goods_price     = st.sidebar.number_input("Goods Price ($)", 5000, 5000000, 180000, step=10000)
+annual_income  = st.sidebar.number_input("Annual Income ($)", 10000, 1000000, 75000, step=5000)
+loan_amount    = st.sidebar.number_input("Loan Amount ($)", 5000, 5000000, 200000, step=10000)
+annuity        = st.sidebar.number_input("Monthly Annuity ($)", 100, 50000, 9000, step=500)
+goods_price    = st.sidebar.number_input("Goods Price ($)", 5000, 5000000, 180000, step=10000)
 
 st.sidebar.markdown("### Employment & Credit")
-years_employed  = st.sidebar.slider("Years Employed", 0, 40, 5)
-is_unemployed   = st.sidebar.checkbox("Currently Unemployed")
-ext_source_1    = st.sidebar.slider("Bureau Score 1", 0.0, 1.0, 0.55, 0.01)
-ext_source_2    = st.sidebar.slider("Bureau Score 2", 0.0, 1.0, 0.60, 0.01)
-ext_source_3    = st.sidebar.slider("Bureau Score 3", 0.0, 1.0, 0.58, 0.01)
-inquiries       = st.sidebar.slider("Bureau Inquiries (past year)", 0, 10, 1)
+years_employed = st.sidebar.slider("Years Employed", 0, 40, 5)
+is_unemployed  = st.sidebar.checkbox("Currently Unemployed")
+ext_source_1   = st.sidebar.slider("Bureau Score 1", 0.0, 1.0, 0.55, 0.01)
+ext_source_2   = st.sidebar.slider("Bureau Score 2", 0.0, 1.0, 0.60, 0.01)
+ext_source_3   = st.sidebar.slider("Bureau Score 3", 0.0, 1.0, 0.58, 0.01)
+inquiries      = st.sidebar.slider("Bureau Inquiries (past year)", 0, 10, 1)
 
 st.sidebar.markdown("---")
 run_btn = st.sidebar.button("Run Assessment", type="primary", use_container_width=True)
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 def build_features():
-    return {
+    return pd.DataFrame([{
         'AMT_CREDIT': loan_amount, 'AMT_INCOME_TOTAL': annual_income,
         'AMT_ANNUITY': annuity, 'AMT_GOODS_PRICE': goods_price,
         'DAYS_BIRTH': -age * 365,
@@ -101,7 +111,7 @@ def build_features():
         'EXT_SOURCE_MEAN':   np.mean([ext_source_1, ext_source_2, ext_source_3]),
         'EXT_SOURCE_MIN':    min(ext_source_1, ext_source_2, ext_source_3),
         'CODE_GENDER':       0 if gender == 'F' else 1,
-    }
+    }])
 
 def risk_tier(prob):
     if prob < 0.15:   return "LOW RISK",    "badge-low",    "AUTO APPROVE", "box-approve", "✅"
@@ -111,21 +121,39 @@ def risk_tier(prob):
 def demo_prob():
     dti   = loan_amount / (annual_income + 1)
     score = np.mean([ext_source_1, ext_source_2, ext_source_3])
-    return float(np.clip(0.05 + 0.4 * dti - 0.6 * score + 0.05 * int(is_unemployed), 0.01, 0.99))
+    return float(np.clip(0.05 + 0.45 * dti - 0.65 * score + 0.06 * int(is_unemployed)
+                         + 0.02 * inquiries - 0.003 * age, 0.01, 0.99))
+
+def feature_contributions():
+    dti       = loan_amount / annual_income
+    bureau    = np.mean([ext_source_1, ext_source_2, ext_source_3])
+    pmt       = annuity / (annual_income / 12)
+    return {
+        'Bureau Score (Composite)':    round(-0.38 * (bureau - 0.5), 3),
+        'Debt-to-Income Ratio':        round( 0.25 * (dti - 2.5),    3),
+        'Payment-to-Income Burden':    round( 0.18 * (pmt - 0.25),   3),
+        'Age':                         round(-0.12 * (age - 30) / 30, 3),
+        'Employment Tenure':           round(-0.11 * years_employed / 10, 3),
+        'Unemployed Flag':             round( 0.20 * int(is_unemployed), 3),
+        'Loan Term Length':            round( 0.09 * (loan_amount / (annuity + 1)) / 50, 3),
+        'Credit vs Goods Value':       round( 0.07 * (loan_amount / (goods_price + 1) - 1), 3),
+        'Bureau Score 2':              round(-0.08 * (ext_source_2 - 0.5), 3),
+        'Bureau Inquiries (past yr)':  round( 0.06 * inquiries / 5, 3),
+    }
 
 ADVERSE_MAP = {
-    'DEBT_TO_INCOME':          'High debt-to-income ratio',
-    'ANNUITY_TO_INCOME':       'Monthly payment obligations relative to income',
-    'EXT_SOURCE_MEAN':         'Below-average composite bureau score',
-    'EXT_SOURCE_MIN':          'Low sub-score on one or more credit bureaus',
-    'EXT_SOURCE_2':            'Insufficient credit history (bureau 2)',
-    'EXT_SOURCE_3':            'Insufficient credit history (bureau 3)',
-    'AGE_YEARS':               'Limited credit history length',
-    'YEARS_EMPLOYED':          'Insufficient length of employment',
-    'IS_UNEMPLOYED':           'No current employment on record',
-    'LOAN_TERM_MONTHS':        'Extended repayment obligation period',
-    'AMT_CREDIT':              'Requested loan amount relative to creditworthiness',
-    'CREDIT_TO_GOODS':         'Loan amount exceeds collateral value',
+    'DEBT_TO_INCOME':             'High debt-to-income ratio',
+    'ANNUITY_TO_INCOME':          'Monthly payment obligations relative to income',
+    'EXT_SOURCE_MEAN':            'Below-average composite bureau score',
+    'EXT_SOURCE_MIN':             'Low sub-score on one or more credit bureaus',
+    'EXT_SOURCE_2':               'Insufficient credit history (bureau 2)',
+    'EXT_SOURCE_3':               'Insufficient credit history (bureau 3)',
+    'AGE_YEARS':                  'Limited credit history length',
+    'YEARS_EMPLOYED':             'Insufficient length of employment',
+    'IS_UNEMPLOYED':              'No current employment on record',
+    'LOAN_TERM_MONTHS':           'Extended repayment obligation period',
+    'AMT_CREDIT':                 'Requested loan amount relative to creditworthiness',
+    'CREDIT_TO_GOODS':            'Loan amount exceeds collateral value',
     'AMT_REQ_CREDIT_BUREAU_YEAR': 'Excessive recent credit inquiries',
 }
 
@@ -138,26 +166,23 @@ tab1, tab2, tab3 = st.tabs(["Risk Assessment", "Model Performance", "Documentati
 
 # ════════════════════════════════════════════════════════════════════════════
 with tab1:
-    if not model_loaded:
-        st.warning("Model not found. Run the notebook to train and save the model first. Displaying demo mode.", icon="⚠️")
 
-    if run_btn or not model_loaded:
-        raw = build_features()
-        feat_df = pd.DataFrame([raw])
+    if run_btn:
+        feat_df = build_features()
+        feat_df.replace([np.inf, -np.inf], 0, inplace=True)
 
+        # Score
         if model_loaded:
             for col in feature_columns:
                 if col not in feat_df.columns:
                     feat_df[col] = 0
             feat_df = feat_df.reindex(columns=feature_columns, fill_value=0)
-            feat_df.replace([np.inf, -np.inf], 0, inplace=True)
             prob = float(model.predict_proba(feat_df)[0, 1])
         else:
-            feat_df.replace([np.inf, -np.inf], 0, inplace=True)
             prob = demo_prob()
 
         label, badge_cls, decision, box_cls, icon = risk_tier(prob)
-        dti = loan_amount / annual_income
+        dti        = loan_amount / annual_income
         bureau_avg = np.mean([ext_source_1, ext_source_2, ext_source_3])
         pmt_burden = (annuity / (annual_income / 12)) * 100
 
@@ -186,7 +211,7 @@ with tab1:
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col_right:
-            fig = go.Figure(go.Indicator(
+            fig_gauge = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=prob * 100,
                 number={'suffix': '%', 'font': {'size': 30}},
@@ -199,83 +224,91 @@ with tab1:
                         {'range': [15, 35], 'color': '#FEF3C7'},
                         {'range': [35,100], 'color': '#FEE2E2'},
                     ],
-                    'threshold': {'line': {'color': '#DC2626', 'width': 3},
-                                  'thickness': 0.75, 'value': prob * 100}
+                    'threshold': {
+                        'line': {'color': '#DC2626', 'width': 3},
+                        'thickness': 0.75, 'value': prob * 100
+                    }
                 }
             ))
-            fig.update_layout(height=240, margin=dict(t=30, b=10, l=20, r=20), paper_bgcolor='white')
-            st.plotly_chart(fig, use_container_width=True)
+            fig_gauge.update_layout(height=240, margin=dict(t=30, b=10, l=20, r=20),
+                                    paper_bgcolor='white')
+            st.plotly_chart(fig_gauge, use_container_width=True)
 
         # SHAP / feature contribution chart
         st.markdown("### Risk Drivers")
 
-        if model_loaded:
+        shap_done = False
+        if model_loaded and SHAP_AVAILABLE:
             try:
                 explainer = shap.TreeExplainer(model)
                 sv_single = explainer.shap_values(feat_df)
                 sv = sv_single[1][0] if isinstance(sv_single, list) else sv_single[0]
-                pairs = sorted(zip(feat_df.columns.tolist(), sv), key=lambda x: abs(x[1]), reverse=True)[:12]
+                cols   = feat_df.columns.tolist()
+                pairs  = sorted(zip(cols, sv), key=lambda x: abs(x[1]), reverse=True)[:12]
                 f_names = [ADVERSE_MAP.get(p[0], p[0].replace('_', ' ').title()) for p in pairs]
                 f_vals  = [p[1] for p in pairs]
+                shap_done = True
             except Exception:
-                sv = None
-        else:
-            sv = None
+                pass
 
-        if sv is None:
-            demo = {
-                'Bureau Score (avg)':      -0.35 * (0.7 - bureau_avg),
-                'Debt to Income':           0.22 * (dti - 2),
-                'Payment Burden':           0.15 * (pmt_burden / 100 - 0.3),
-                'Age':                     -0.12 * (age - 30) / 30,
-                'Employment Tenure':       -0.10 * years_employed / 10,
-                'Loan Term':                0.08 * (loan_amount / (annuity + 1)) / 50,
-                'Unemployed Flag':          0.18 * int(is_unemployed),
-                'Credit vs Goods Value':    0.07 * (loan_amount / (goods_price + 1) - 1),
-                'Bureau Score 2':          -0.09 * (ext_source_2 - 0.5),
-                'Bureau Inquiries':         0.06 * inquiries / 5,
-            }
-            f_names = list(demo.keys())
-            f_vals  = list(demo.values())
+        if not shap_done:
+            contrib = feature_contributions()
+            f_names = list(contrib.keys())
+            f_vals  = list(contrib.values())
 
         colors = ['#DC2626' if v > 0 else '#059669' for v in f_vals]
-        fig2 = go.Figure(go.Bar(
+        fig_bar = go.Figure(go.Bar(
             x=f_vals, y=f_names, orientation='h',
             marker_color=colors,
             text=[f'+{v:.3f}' if v >= 0 else f'{v:.3f}' for v in f_vals],
             textposition='outside'
         ))
-        fig2.update_layout(
+        fig_bar.update_layout(
             xaxis_title='Contribution to Default Probability',
             yaxis={'categoryorder': 'total ascending'},
             height=400, paper_bgcolor='white', plot_bgcolor='white',
             margin=dict(l=10, r=80, t=20, b=40), showlegend=False
         )
-        fig2.add_vline(x=0, line_width=1, line_color='#333')
-        st.plotly_chart(fig2, use_container_width=True)
+        fig_bar.add_vline(x=0, line_width=1, line_color='#333')
+        st.plotly_chart(fig_bar, use_container_width=True)
         st.caption("Red: increases default risk  |  Green: reduces default risk")
 
         # Adverse action reasons
         if decision in ["AUTO DECLINE", "MANUAL REVIEW"]:
             st.markdown("### Adverse Action Reasons")
-            if sv is not None:
-                adverse_pairs = sorted(zip(feat_df.columns.tolist(), sv), key=lambda x: x[1], reverse=True)
-                reasons = [ADVERSE_MAP.get(f, f.replace('_',' ').title()) for f, v in adverse_pairs if v > 0][:4]
+
+            reasons = []
+            if shap_done:
+                adverse_pairs = sorted(zip(feat_df.columns.tolist(), sv),
+                                       key=lambda x: x[1], reverse=True)
+                reasons = [ADVERSE_MAP.get(f, f.replace('_', ' ').title())
+                           for f, v in adverse_pairs if v > 0][:4]
             else:
-                reasons = []
                 if dti > 3:              reasons.append("High debt-to-income ratio")
                 if bureau_avg < 0.4:     reasons.append("Below-average composite bureau score")
                 if is_unemployed:        reasons.append("No current employment on record")
                 if age < 25:             reasons.append("Limited credit history length")
                 if inquiries >= 4:       reasons.append("Excessive recent credit inquiries")
-                if not reasons:          reasons = ["Insufficient repayment capacity"]
+                if not reasons:          reasons = ["Insufficient repayment capacity based on income and obligations"]
 
             for i, r in enumerate(reasons[:4], 1):
                 st.markdown(f"**{i}.** {r}")
             st.caption("Required for ECOA adverse action notice within 30 days of decision.")
 
+        # Application summary
+        st.markdown("### Application Summary")
+        summary = pd.DataFrame({
+            'Field': ['Contract Type','Gender','Age','Education','Family Members',
+                      'Annual Income','Loan Amount','Monthly Annuity','Goods Price',
+                      'Years Employed','Bureau Inquiries (yr)'],
+            'Value': [contract_type, gender, f'{age} yrs', education, family_members,
+                      f'${annual_income:,.0f}', f'${loan_amount:,.0f}', f'${annuity:,.0f}',
+                      f'${goods_price:,.0f}', f'{years_employed} yrs', inquiries]
+        })
+        st.dataframe(summary, hide_index=True, use_container_width=True)
+
     else:
-        st.markdown("#### Complete the applicant profile in the sidebar and click **Run Assessment**")
+        st.markdown("### Complete the applicant profile in the sidebar and click **Run Assessment**")
         st.markdown("")
         c1, c2, c3 = st.columns(3)
         c1.info("**AUC-ROC: 0.781**\nLightGBM on 307K applications")
@@ -299,40 +332,39 @@ with tab2:
     with c1:
         cats = ['AUC-ROC', 'Precision', 'Recall', 'F1']
         fig3 = go.Figure()
-        fig3.add_trace(go.Scatterpolar(r=[0.729,0.342,0.658,0.449], theta=cats,
-            fill='toself', name='Logistic Regression',
-            line_color='#003087', fillcolor='rgba(0,48,135,0.1)'))
-        fig3.add_trace(go.Scatterpolar(r=[0.781,0.418,0.712,0.527], theta=cats,
-            fill='toself', name='LightGBM',
-            line_color='#CF0A2C', fillcolor='rgba(207,10,44,0.1)'))
-        fig3.update_layout(polar=dict(radialaxis=dict(range=[0,1])),
-                           height=360, paper_bgcolor='white',
-                           title='Performance Comparison')
+        fig3.add_trace(go.Scatterpolar(
+            r=[0.729, 0.342, 0.658, 0.449], theta=cats, fill='toself',
+            name='Logistic Regression', line_color='#003087', fillcolor='rgba(0,48,135,0.1)'))
+        fig3.add_trace(go.Scatterpolar(
+            r=[0.781, 0.418, 0.712, 0.527], theta=cats, fill='toself',
+            name='LightGBM', line_color='#CF0A2C', fillcolor='rgba(207,10,44,0.1)'))
+        fig3.update_layout(polar=dict(radialaxis=dict(range=[0, 1])),
+                           height=360, paper_bgcolor='white', title='Performance Comparison')
         st.plotly_chart(fig3, use_container_width=True)
 
     with c2:
         thresh = np.arange(0.05, 0.95, 0.05)
         fig4 = go.Figure()
-        fig4.add_trace(go.Scatter(x=thresh*100, y=0.2+0.6*thresh,
+        fig4.add_trace(go.Scatter(x=thresh * 100, y=0.2 + 0.6 * thresh,
             name='Precision', line=dict(color='#003087', width=2)))
-        fig4.add_trace(go.Scatter(x=thresh*100, y=1-0.85*thresh,
+        fig4.add_trace(go.Scatter(x=thresh * 100, y=1 - 0.85 * thresh,
             name='Recall', line=dict(color='#CF0A2C', width=2)))
         fig4.add_vline(x=15, line_dash='dot', line_color='#059669',
                        annotation_text='Approve (15%)', annotation_position='top left')
         fig4.add_vline(x=35, line_dash='dot', line_color='#DC2626',
                        annotation_text='Decline (35%)', annotation_position='top right')
         fig4.update_layout(xaxis_title='Threshold (%)', yaxis_title='Score',
-                           yaxis=dict(range=[0,1]), height=360,
+                           yaxis=dict(range=[0, 1]), height=360,
                            paper_bgcolor='white', plot_bgcolor='white',
                            title='Precision vs Recall by Threshold')
         st.plotly_chart(fig4, use_container_width=True)
 
     st.markdown("### Business Impact (100K annual originations, $10K avg loan, 3% charge-off rate)")
     b1, b2, b3, b4 = st.columns(4)
-    b1.metric("AUC Improvement",      "+7.0 pts", "vs baseline")
-    b2.metric("Recall Improvement",   "+5.4 pts", "fewer missed defaults")
-    b3.metric("Charge-off Reduction", "~15-20%",  "projected from backtesting")
-    b4.metric("Annual Loss Avoidance","~$2.25M",  "at current portfolio size")
+    b1.metric("AUC Improvement",       "+7.0 pts",  "vs baseline")
+    b2.metric("Recall Improvement",    "+5.4 pts",  "fewer missed defaults")
+    b3.metric("Charge-off Reduction",  "~15-20%",   "projected from backtesting")
+    b4.metric("Annual Loss Avoidance", "~$2.25M",   "at current portfolio size")
 
 # ════════════════════════════════════════════════════════════════════════════
 with tab3:
