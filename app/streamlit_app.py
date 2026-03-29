@@ -49,22 +49,15 @@ st.markdown("""
 [data-testid="stSidebar"] h3 { color: white !important; }
 [data-testid="stSidebar"] .stMarkdown { color: white !important; }
 
-/* Dropdown options — force readable colors in both light and dark mode */
+/* Dropdown options — use Streamlit's theme variables so light/dark both work */
 [data-baseweb="popover"] [role="option"],
-[data-baseweb="menu"] li,
-ul[data-baseweb="menu"] li {
-    color: #1a1a1a !important;
-    background-color: #ffffff !important;
+[data-baseweb="menu"] li {
+    color: var(--text-color) !important;
+    background-color: var(--background-color) !important;
 }
 [data-baseweb="popover"] [role="option"]:hover,
 [data-baseweb="menu"] li:hover {
-    background-color: #EFF6FF !important;
-    color: #003087 !important;
-}
-/* Selected option text inside the sidebar widget */
-[data-testid="stSidebar"] [data-baseweb="select"] span,
-[data-testid="stSidebar"] [data-baseweb="select"] div {
-    color: #1a1a1a !important;
+    background-color: var(--secondary-background-color) !important;
 }
 </style>
 """, unsafe_allow_html=True)
