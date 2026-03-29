@@ -39,15 +39,33 @@ st.markdown("""
 .box-decline  { background:#FEE2E2; border:2px solid #DC2626; border-radius:12px; padding:1.5rem; color:#991B1B !important; }
 .box-approve *, .box-review *, .box-decline * { color: inherit !important; }
 
-/* Sidebar */
+/* Sidebar — be specific, don't bleed into dropdown popovers */
 [data-testid="stSidebar"] { background-color: #1E3A5F; }
-[data-testid="stSidebar"] label,
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] span,
-[data-testid="stSidebar"] div,
+[data-testid="stSidebar"] > div { color: white; }
+[data-testid="stSidebar"] label { color: #CBD5E1 !important; }
+[data-testid="stSidebar"] p { color: white !important; }
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,
 [data-testid="stSidebar"] h3 { color: white !important; }
+[data-testid="stSidebar"] .stMarkdown { color: white !important; }
+
+/* Dropdown options — force readable colors in both light and dark mode */
+[data-baseweb="popover"] [role="option"],
+[data-baseweb="menu"] li,
+ul[data-baseweb="menu"] li {
+    color: #1a1a1a !important;
+    background-color: #ffffff !important;
+}
+[data-baseweb="popover"] [role="option"]:hover,
+[data-baseweb="menu"] li:hover {
+    background-color: #EFF6FF !important;
+    color: #003087 !important;
+}
+/* Selected option text inside the sidebar widget */
+[data-testid="stSidebar"] [data-baseweb="select"] span,
+[data-testid="stSidebar"] [data-baseweb="select"] div {
+    color: #1a1a1a !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
