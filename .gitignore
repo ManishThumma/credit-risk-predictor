@@ -6,10 +6,8 @@ data/
 *.joblib
 *.h5
 
-# Models (too large for git)
-models/*.pkl
-models/*.joblib
-models/*.txt
+# Models — tracked for Streamlit Cloud deployment
+# models/*.pkl
 
 # Python
 __pycache__/
